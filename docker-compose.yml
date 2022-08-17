@@ -1,0 +1,55 @@
+version: '3.8'
+
+networks:
+  cluster-net:
+    name: ceph-cluster-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.42.0.0/24
+  app_subnet:
+    external: true
+services:
+
+  postgresqldb:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=workflowlaez
+  ceph:
+    image: ceph/daemon:${CEPH_CONTAINER_VERSION}
+    command: demo
+    hostname: ceph-demo
+    ports:
+      - 5000:5000
+      - 8000:8000
+    environment:
+      CEPH_PUBLIC_NETWORK: ${CEPH_PUBLIC_NETWORK}
+      MON_IP: ${MON_IP}
+      CEPH_DEMO_UID: ${UID}
+      CEPH_DEMO_ACCESS_KEY: sandbox
+      CEPH_DEMO_SECRET_KEY: s3cr3t
+      CEPH_DEMO_BUCKET: ${BUCKET}
+      RGW_NAME: ceph-demo
+      RGW_FRONTEND_PORT: 8000
+    volumes:
+      - ./docker/ceph/etc/:/etc/ceph
+      - ./docker/ceph/var/:/var/lib/ceph
+      - ./docker/ceph/log/:/var/log/ceph
+      - ./docker/ceph/tools/:/tools
+    networks:
+      cluster-net:
+        ipv4_address: ${MON_IP}
+  rabbit:
+    image: "rabbitmq:3-management"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "SWQOKODSQALRPCLNMEQG"
+      RABBITMQ_DEFAULT_USER: "rabbitmq"
+      RABBITMQ_DEFAULT_PASS: "rabbitmq"
+      RABBITMQ_DEFAULT_VHOST: "/"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
